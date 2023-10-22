@@ -63,10 +63,11 @@ class BoardAbalone(Board):
                     string += str(grid_data[i][j]) + " "
             string += "\n"
         return string
-    
-    def get_neighbours(self, i:int ,j: int) -> Dict[str,Tuple[str,Tuple[int,int]]]:
+
+
+    def get_neighbours(self, i: int, j: int) -> Dict[str, Tuple[str, Tuple[int, int]]]:
         """ returns a dictionnary of the neighbours of the cell (i,j) with the following format:
-            
+
         (neighbour_name: (neighbour_type, (i,j)))
 
 
@@ -77,15 +78,19 @@ class BoardAbalone(Board):
         Returns:
             Dict[str,Tuple[str,Tuple[int,int]]]: dictionnary of the neighbours of the cell (i,j)
         """
-        neighbours = {"top_left":(i-1,j-1), "top_right":(i-2,j), "left":(i+1,j-1), "right":(i-1,j+1), "bottom_left":(i+2,j), "bottom_right":(i+1,j+1)}
-        for k,v in neighbours.items():
+        neighbours = {"top_left": (i - 1, j - 1), "top_right": (i - 2, j), "left": (i + 1, j - 1),
+                      "right": (i - 1, j + 1), "bottom_left": (i + 2, j), "bottom_right": (i + 1, j + 1)}
+        for k, v in neighbours.items():
             if v not in self.env.keys():
-                if BoardAbalone.FORBIDDEN_MASK[v[0]][v[1]]:
-                    neighbours[k] = ("OUTSIDE",neighbours[k])
+                if v[0] < 0 or v[1] < 0 or v[0] >= self.dimensions[0] or v[1] >= self.dimensions[1]:
+                    neighbours[k] = ("OUTSIDE", neighbours[k])
                 else:
-                    neighbours[k] = ("EMPTY",neighbours[k])
+                    if BoardAbalone.FORBIDDEN_MASK[v[0]][v[1]]:
+                        neighbours[k] = ("OUTSIDE", neighbours[k])
+                    else:
+                        neighbours[k] = ("EMPTY", neighbours[k])
             else:
-                neighbours[k] = (self.env[neighbours[k]].get_type(),neighbours[k])
+                neighbours[k] = (self.env[neighbours[k]].get_type(), neighbours[k])
         return neighbours
 
     def get_grid(self) -> List[List[int]]:
