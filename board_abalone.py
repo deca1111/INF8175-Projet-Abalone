@@ -64,7 +64,6 @@ class BoardAbalone(Board):
             string += "\n"
         return string
 
-
     def get_neighbours(self, i: int, j: int) -> Dict[str, Tuple[str, Tuple[int, int]]]:
         """ returns a dictionnary of the neighbours of the cell (i,j) with the following format:
 

@@ -35,6 +35,11 @@ on pourrait créer une fonction d'évaluation (plus rapide que la fonction heuri
 actions les plus susceptible d'être intéressantes, par exemple un coup qui pousse une boule adverse. Cela pourrait 
 augmenter grandement les performances de la recherche et permettrait donc de regarder plus profond.
 
+  - 1ère implémentation: On regarde si il y a une différence de score et on étudie en priorité les actions qui poussent 
+    des billes adverses dehors et en dernier les actions ou l'on pousse nos propres billes dehors.  
+    Résultat : Avec une profondeur de 4 sur les 2 premières actions, on passe de ~50/55sec ~200/250k noeuds explorés et ~7/8k 
+    pruning à ~35/40sec ~150/200k noeuds explorés et ~5k pruning
+
 
 - On pourrait créer des tests de performances. J'ai commencé en affichant le nombre d'actions analysées à chaque coup 
 joué (je ne suis pas tout à fait sûr de l'implémentation d'ailleurs). Le but serait de vérifier si le pruning permet de 
