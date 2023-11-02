@@ -3,7 +3,8 @@ from seahorse.game.action import Action
 from seahorse.game.game_state import GameState
 from seahorse.utils.custom_exceptions import MethodNotImplementedError
 
-import my_player
+import algoRecherche
+import heuristique
 
 import math
 import random
@@ -40,15 +41,31 @@ class MyPlayer(PlayerAbalone):
             Action: selected feasible action
         """
 
-        vStar, action_To_Play, nbAction = my_player.alphabeta_search_depth(current_state, cutoff_depth=2, h=my_player.bothScoreHeuristique)
+        evaluation, action, metrics = algoRecherche.alphabeta_search_depthV2(current_state, heuristique.bothScoreHeuristique,
+                                                               cutoff_depth=2)
 
-        print("_______________________________________\nDébut de la recherche\n")
-        print("Nombre d'actions possibles :", len(current_state.get_possible_actions()))
-        print("Nombre de noeuds parcourus :", nbAction)
-        print("vStar :", vStar)
+        print("-----------------------------------------------------------\n"
+              f"Résultat de la recherche du joueur {current_state.get_next_player().get_name()} - Tour : "
+              f"{current_state.get_step()}")
+        # Affichage des metriques
+        for key in metrics:
+            print(key, " : ", metrics[key])
+        print("Meilleur score obtenue :", evaluation)
+
         print("Scores après l'action :")
-        for player in current_state.get_players():
-            print(f"\t{player.get_name()} : {current_state.get_player_score(player)}")
+        if action:
+            futureState = action.get_next_game_state()
+            for player in futureState.get_players():
+                print(f"\t{player.get_name()} : {futureState.get_player_score(player)}")
+        else:
+            print("========================================================== Pas d'action proposé =================")
+            # Si il n'y a pas d'action retournée par la recherche (il y a surement un problème), on prend la première
+            # action disponible
+            action = list(current_state.get_possible_actions())[0]
 
-        return action_To_Play
+        # Si l'action n'est pas faisable, on prend la première action disponible
+        if not current_state.check_action(action):
+            action = list(current_state.get_possible_actions())[0]
+
+        return action
 

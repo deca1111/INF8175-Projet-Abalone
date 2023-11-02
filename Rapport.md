@@ -37,8 +37,8 @@ augmenter grandement les performances de la recherche et permettrait donc de reg
 
   - 1ère implémentation: On regarde si il y a une différence de score et on étudie en priorité les actions qui poussent 
     des billes adverses dehors et en dernier les actions ou l'on pousse nos propres billes dehors.  
-    Résultat : Avec une profondeur de 4 sur les 2 premières actions, on passe de ~50/55sec ~200/250k noeuds explorés et ~7/8k 
-    pruning à ~35/40sec ~150/200k noeuds explorés et ~5k pruning
+    Résultat : Avec une profondeur de 4 sur les 2 premières actions, on passe de **~50/55sec** ~200/250k noeuds explorés et ~7/8k 
+    pruning à **~35/40sec** ~150/200k noeuds explorés et ~5k pruning
 
 
 - On pourrait créer des tests de performances. J'ai commencé en affichant le nombre d'actions analysées à chaque coup 
@@ -86,6 +86,9 @@ victoire et la défaite).
 Pour cela, il faudrait donner un score plus élevé à nos billes proche du centre et un score négatif pour nos billes proche du bord.
 Il faut aussi faire l'inverse pour les billes de l'adversaire.  
 Les valeurs peuvent plus ou moins balancé afin d'inciter plus à l'attaque ou à la défence.
+
+  - Attention à bien pondérer par le nombre de pièce ou avec le score parce que sinon le modèle peut suicider des billes
+    pour améliorer son score.
 
 
 - On pourrait aussi donner des bonus s’il met ses billes en ligne de 2 ou 3. On pourrait aussi donner un malus si 
