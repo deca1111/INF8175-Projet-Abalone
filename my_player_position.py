@@ -2,17 +2,12 @@ from player_abalone import PlayerAbalone
 from seahorse.game.action import Action
 from seahorse.game.game_state import GameState
 from seahorse.utils.custom_exceptions import MethodNotImplementedError
-from master_abalone import MasterAbalone
+
+import algoRecherche
+import heuristique
 
 import math
 import random
-
-# Import des fonctions du projet
-import heuristique
-import utils
-import algoRecherche
-
-infinity = math.inf
 
 
 class MyPlayer(PlayerAbalone):
@@ -45,29 +40,9 @@ class MyPlayer(PlayerAbalone):
         Returns:
             Action: selected feasible action
         """
-        action = list(current_state.get_possible_actions())[0]
 
-        # print(current_state.get_rep())
-        #
-        # score = heuristique.lonelyHeuristique(current_state)
-        #
-        # print("Score estimé de l'action : ", score)
-        #
-        # print("===========================\nEtat suivant :")
-        #
-        # nextState = action.get_next_game_state()
-        #
-        # print(nextState.get_rep())
-        #
-        # score = heuristique.lonelyHeuristique(nextState)
-        #
-        # print("Score estimé de l'action : ", score)
-        #
-        # while (1):
-        #     pass
-
-        evaluation, action, metrics = algoRecherche.alphabeta_search_depthV2(current_state, heuristique.positionHeuristiqueV2,
-                                                                             cutoff_depth=2)
+        evaluation, action, metrics = algoRecherche.alphabeta_search_depthV2(current_state, heuristique.positionHeuristique,
+                                                               cutoff_depth=2)
 
         print("-----------------------------------------------------------\n"
               f"Résultat de la recherche du joueur {current_state.get_next_player().get_name()} - Tour : "
@@ -84,8 +59,8 @@ class MyPlayer(PlayerAbalone):
                 print(f"\t{player.get_name()} : {futureState.get_player_score(player)}")
         else:
             print("========================================================== Pas d'action proposé =================")
-            # Si il n'y a pas d'action retournée par la recherche (c'est que toutes les actions sont perdante), on
-            # prend la première action disponible
+            # Si il n'y a pas d'action retournée par la recherche (il y a surement un problème), on prend la première
+            # action disponible
             action = list(current_state.get_possible_actions())[0]
 
         # Si l'action n'est pas faisable, on prend la première action disponible
@@ -93,5 +68,4 @@ class MyPlayer(PlayerAbalone):
             action = list(current_state.get_possible_actions())[0]
 
         return action
-
 

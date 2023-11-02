@@ -87,8 +87,10 @@ Pour cela, il faudrait donner un score plus élevé à nos billes proche du cent
 Il faut aussi faire l'inverse pour les billes de l'adversaire.  
 Les valeurs peuvent plus ou moins balancé afin d'inciter plus à l'attaque ou à la défence.
 
-  - Attention à bien pondérer par le nombre de pièce ou avec le score parce que sinon le modèle peut suicider des billes
+  - Attention à bien pondérer par le nombre de pièces ou avec le score parce que sinon le modèle peut suicider des billes
     pour améliorer son score.
+  - 1ère implémentation: on a créé une table de correspondance qui pour chaque pièce donne un score en fonction de sa 
+    distance au centre et de son propriétaire.
 
 
 - On pourrait aussi donner des bonus s’il met ses billes en ligne de 2 ou 3. On pourrait aussi donner un malus si 

@@ -106,3 +106,37 @@ def getOrderScore(action: Action) -> float:
     # [print(*x) for x in currentState.get_rep().get_grid()]
     # [print(a, b.__dict__) for a, b in currentState.get_rep().env.items()]
     return score
+
+
+def isLonely(state:GameState, coord, color):
+    """
+    Détermine si une bille est isolée, c'est à dire qu'elle n'a aucune bille alliée dans son voisinage
+    Args:
+        state: État de la partie
+        coord: Coordonées de la bille
+        color: Couleur de la bille
+
+    Returns:
+        bool: True si la bille est isolé, False sinon
+    """
+    voisinage = state.get_neighbours(coord[0], coord[1])
+
+    for voisin in voisinage:
+        # Si un bille voisine est de la même couleur alors on renvoi faux
+        if voisinage[voisin][0] == color:
+            return False
+
+    # Si aucun voisin allié, renvoi vrai
+    return True
+
+
+
+
+
+
+
+
+
+
+
+

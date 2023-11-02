@@ -12,6 +12,7 @@ import heuristique
 
 infinity = math.inf
 
+
 def alphabeta_search_depthV1(state: GameState, h, cutoff_depth=3):
     """
     Algorithme de recherche alpha beta pruning.
@@ -112,9 +113,6 @@ def alphabeta_search_depthV2(state: GameState, heuristiqueFct=heuristique.nullHe
 
     Returns: scoreMax
     """
-
-    # Joueur qui lance la recherche (moi)
-    myPlayer = state.get_next_player()
 
     nbActionSearched = 0
     nbPruning = 0
