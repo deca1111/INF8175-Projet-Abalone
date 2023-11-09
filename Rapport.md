@@ -61,6 +61,7 @@ Je crois que le prof en a parlé, ça consiste à d'abord regarder à une profon
 L'intérêt est que si l'on fixe une limite de temps à l'algo, il peut s'arrêter à tout instant sans en garantissant une 
 exploration complète. Pour améliorer ce processus, on peut regarder en priorité les meilleurs coups trouvés par la recherche 
 précédente.
+- 1ère implémentation: Allocation de 18s pour chaque coup
 
 
 - Search extension. Le principe est de passer plus de temps (regarder plus profond) si un coup nous paraît prometteur.  

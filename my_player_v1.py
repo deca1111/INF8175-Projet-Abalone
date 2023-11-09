@@ -2,17 +2,9 @@ from player_abalone import PlayerAbalone
 from seahorse.game.action import Action
 from seahorse.game.game_state import GameState
 from seahorse.utils.custom_exceptions import MethodNotImplementedError
-from master_abalone import MasterAbalone
 
 import math
 import random
-
-# Import des fonctions du projet
-import heuristique
-import utils
-import algoRecherche
-
-infinity = math.inf
 
 
 class MyPlayer(PlayerAbalone):
@@ -45,54 +37,87 @@ class MyPlayer(PlayerAbalone):
         Returns:
             Action: selected feasible action
         """
-        action = list(current_state.get_possible_actions())[0]
 
-        # print(current_state.get_rep())
-        #
-        # score = heuristique.lonelyHeuristique(current_state)
-        #
-        # print("Score estimé de l'action : ", score)
-        #
-        # print("===========================\nEtat suivant :")
-        #
-        # nextState = action.get_next_game_state()
-        #
-        # print(nextState.get_rep())
-        #
-        # score = heuristique.lonelyHeuristique(nextState)
-        #
-        # print("Score estimé de l'action : ", score)
-        #
-        # while (1):
-        #     pass
+        vStar, action_To_Play, nbAction = h_alphabeta_search(current_state, cutoff_depth=2, h=scoreHeuristique)
 
-
-        evaluation, action, metrics = algoRecherche.alphabeta_search_depthV1(current_state, heuristique.positionHeuristique,
-                                                                             cutoff_depth=2)
-
-        print("-----------------------------------------------------------\n"
-              f"Résultat de la recherche du joueur {current_state.get_next_player().get_name()} - Tour : "
-              f"{current_state.get_step()}")
-        # Affichage des metriques
-        for key in metrics:
-            print(key, " : ", metrics[key])
-        print("Meilleur score obtenue :", evaluation)
-
+        print("_______________________________________\nDébut de la recherche\n")
+        print("Nombre d'actions possibles :", len(current_state.get_possible_actions()))
+        print("Nombre de noeuds parcourus :", nbAction)
+        print("vStar :", vStar)
         print("Scores après l'action :")
-        if action:
-            futureState = action.get_next_game_state()
-            for player in futureState.get_players():
-                print(f"\t{player.get_name()} : {futureState.get_player_score(player)}")
-        else:
-            print("========================================================== Pas d'action proposé =================")
-            # Si il n'y a pas d'action retournée par la recherche (c'est que toutes les actions sont perdante), on
-            # prend la première action disponible
-            action = list(current_state.get_possible_actions())[0]
+        for player in current_state.get_players():
+            print(f"\t{player.get_name()} : {current_state.get_player_score(player)}")
 
-        # Si l'action n'est pas faisable, on prend la première action disponible
-        if not current_state.check_action(action):
-            action = list(current_state.get_possible_actions())[0]
-
-        return action
+        return action_To_Play
 
 
+infinity = math.inf
+
+
+def h_alphabeta_search(state: GameState, cutoff_depth=3, h=lambda s, p: 0):
+    """Search game to determine best action; use alpha-beta pruning.
+    This version searches all the way to the leaves."""
+
+    player = state.get_next_player()
+
+    def max_value(state: GameState, alpha, beta, depth):
+        # TODO: include a recursive call to min_value function
+        if state.is_done():
+            return state.get_player_score(player), None, 1
+        if depth > cutoff_depth:
+            return h(state, player), None, 1
+        vStar = - infinity
+        mStar = None
+
+        # On va compter le nombre d’actions parcourues (pour affichage)
+        nbActionSchearched = 1
+
+        for a in state.get_possible_actions():
+            s = a.get_next_game_state()
+            v, _, n = min_value(s, alpha, beta, depth + 1)
+
+            # Actualisation du nombre d’actions parcourues
+            nbActionSchearched += n
+
+            if v > vStar:
+                vStar = v
+                mStar = a
+                alpha = max(alpha, vStar)
+            if vStar >= beta:
+                return vStar, mStar, nbActionSchearched
+
+        return vStar, mStar, nbActionSchearched
+
+    def min_value(state, alpha, beta, depth):
+        # TODO: include a recursive call to min_value function
+        if state.is_done():
+            return state.get_player_score(player), None, 1
+        if depth > cutoff_depth:
+            return h(state, player), None, 1
+        vStar = math.inf
+        mStar = None
+
+        # On va compter le nombre d'actions parcourues (pour affichage)
+        nbActionSchearched = 1
+
+        for a in state.get_possible_actions():
+            s = a.get_next_game_state()
+            v, _, n = max_value(s, alpha, beta, depth + 1)
+
+            # Actualisation du nombre d’actions parcourues
+            nbActionSchearched += n
+
+            if v < vStar:
+                vStar = v
+                mStar = a
+                beta = min(beta, vStar)
+            if vStar <= alpha:
+                return vStar, mStar, nbActionSchearched
+
+        return vStar, mStar, nbActionSchearched
+
+    return max_value(state, -infinity, +infinity, 0)
+
+
+def scoreHeuristique(state, player):
+    return state.get_player_score(player)
