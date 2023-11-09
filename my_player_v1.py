@@ -67,7 +67,7 @@ class MyPlayer(PlayerAbalone):
         #     pass
 
 
-        evaluation, action, metrics = algoRecherche.alphabeta_search_time_limited(current_state, heuristique.positionHeuristiqueV2,
+        evaluation, action, metrics = algoRecherche.alphabeta_search_depthV1(current_state, heuristique.positionHeuristique,
                                                                              cutoff_depth=2)
 
         print("-----------------------------------------------------------\n"

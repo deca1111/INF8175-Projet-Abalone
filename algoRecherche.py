@@ -6,7 +6,7 @@ from master_abalone import MasterAbalone
 
 import math
 import random
-
+import time
 import utils
 import heuristique
 
@@ -190,3 +190,90 @@ def alphabeta_search_depthV2(state: GameState, heuristiqueFct=heuristique.nullHe
 
     return bestEval, bestAction, metrics
 
+
+def alphabeta_search_time_limited(state: GameState, heuristiqueFct=heuristique.nullHeuristique, cutoff_depth=3) -> (float, Action, dict):
+    """
+    Alpha-beta search with a time limit.
+
+    Args:
+        state: Current game state.
+        heuristiqueFct: Heuristic function.
+        max_total_time: Maximum total time for 50 moves (15 minutes).
+        cutoff_depth: Maximum search depth.
+
+    Returns:
+        Tuple containing the best evaluation, the best action, and metrics.
+    """
+
+    max_total_time = 900
+    nbActionSearched = 0
+    nbPruning = 0
+    elapsed_time = 0
+    
+    start_time = time.time()
+    max_time_per_move = max_total_time / 50  # 15 minutes / 50 moves = 18 seconds per move
+    
+    def time_left():
+        previous_time = time.time() - start_time 
+        elapsed_time = time.time() - start_time - previous_time
+        return max_time_per_move - elapsed_time
+
+    def recherche(currentState: GameState, alpha, beta, depth) -> (float, Action):
+        nonlocal nbActionSearched
+        nbActionSearched += 1
+
+        if time_left() <= 0:
+            return -infinity, None  # Ran out of time, return a bad evaluation
+        
+        currentPlayer = currentState.get_next_player()
+
+        if currentState.is_done():
+            winner = utils.getWinner(currentState)
+            if len(winner) > 1:
+                return 0, None
+            elif winner[0] == currentPlayer:
+                return infinity - 1, None
+            else:
+                return -infinity + 1, None
+
+        if depth > cutoff_depth:
+            return heuristiqueFct(currentState), None
+
+        bestEval = -infinity
+        bestAction = None
+
+        listeAction = list(currentState.get_possible_actions())
+        listeAction.sort(key=utils.getOrderScore, reverse=True)
+
+        for action in listeAction:
+            if time_left() <= 0:
+                return -infinity, None  # Ran out of time, return a bad evaluation
+            
+            nextState = action.get_next_game_state()
+            evaluation, _ = recherche(nextState, -beta, -alpha, depth + 1)
+            evaluation = -evaluation
+
+            if evaluation > bestEval:
+                bestEval = evaluation
+                bestAction = action
+                alpha = max(alpha, evaluation)
+
+            if bestEval >= beta:
+                nonlocal nbPruning
+                nbPruning += 1
+                break
+
+        return bestEval, bestAction
+
+    bestEval, bestAction = recherche(state, -infinity, infinity, 0)
+    elapsed_time = time.time() - start_time
+
+    metrics = {
+        "Number of states evaluated": nbActionSearched,
+        "Number of prunings": nbPruning,
+        "Elapsed time (s)": elapsed_time
+    }
+
+    print("Elapsed time (s):", elapsed_time)
+
+    return bestEval, bestAction, metrics
