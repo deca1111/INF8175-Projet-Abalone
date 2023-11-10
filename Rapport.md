@@ -54,6 +54,8 @@ aucune bille dehors.
 
 - Pour gagner grandement en performance, il faudrait se pencher sur le problème des chemins redondant menant aux mêmes coups.
 Dans le cours le prof mentionne les tables de transpositions (slide 33, module 2)
+- 1ère implémentation: table de transposition normal qui assign un random key à chaque neoud puis le skock dans une table. Ralenti les performances parce que le system doit parcourit la table a chaque fois pour vérifier si le noeud y es présent. Rajoute des secondes de traitement.
+
 
 
 - Réfléchir à la manière de distribuer le temps pour chaque coups. Peut être regarder du coté de l'iterative deepening search.
@@ -67,6 +69,7 @@ précédente.
 - Search extension. Le principe est de passer plus de temps (regarder plus profond) si un coup nous paraît prometteur.  
 À voir les critères que l'on peut choisir pour trouver un coup prometteur, par exemple un coup on pousse une bille 
 adverse sur le bord.
+
 
 ### B. Fonction heuristique
 
