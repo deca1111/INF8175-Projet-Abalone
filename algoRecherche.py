@@ -1,9 +1,14 @@
 import hashlib
+
+from TranspositionTable import TranspositionTable
+from game_state_abalone import GameStateAbalone
 from player_abalone import PlayerAbalone
 from seahorse.game.action import Action
 from seahorse.game.game_state import GameState
 from seahorse.utils.custom_exceptions import MethodNotImplementedError
 from master_abalone import MasterAbalone
+
+from memory_profiler import profile
 
 import math
 import random
@@ -98,7 +103,13 @@ def alphabeta_search_depthV1(state: GameState, h, cutoff_depth=3):
     return max_value(state, -infinity, +infinity, 0)
 
 
-def alphabeta_search_depthV2(state: GameState, heuristiqueFct=heuristique.nullHeuristique, cutoff_depth=3) -> (float, Action, dict):
+@profile
+def alphabeta_search_depthV2(
+        state: GameState,
+        heuristiqueFct=heuristique.nullHeuristique,
+        cutoff_depth=3
+        ) \
+        -> (float, Action, dict):
     """
     2ème version
 
@@ -192,12 +203,19 @@ def alphabeta_search_depthV2(state: GameState, heuristiqueFct=heuristique.nullHe
     return bestEval, bestAction, metrics
 
 
-
-def alphabeta_search_time_limited(state: GameState, heuristiqueFct=heuristique.nullHeuristique, cutoff_depth=3) -> (float, Action, dict):
+# @profile
+def alphabeta_search_time_limited(
+        state: GameState,
+        remainingTime,
+        heuristiqueFct=heuristique.nullHeuristique,
+        cutoff_depth=3
+        ) \
+        -> (float, Action, dict):
     """
     Alpha-beta search with a time limit.
 
     Args:
+        remainingTime: temps restant
         state: Current game state.
         heuristiqueFct: Heuristic function.
         cutoff_depth: Maximum search depth.
@@ -206,30 +224,33 @@ def alphabeta_search_time_limited(state: GameState, heuristiqueFct=heuristique.n
         Tuple containing the best evaluation, the best action, and metrics.
     """
 
-    max_total_time = 900
     nbActionSearched = 0
     nbPruning = 0
-    elapsed_time = 0
-     
-     
-    start_time = time.time()
-    max_time_per_move = max_total_time / 50  # 15 minutes / 50 moves = 18 seconds per move
-    
-    previous_time = time.time() - start_time 
+    if state.get_step() % 2 == 0:
+        remainingMove = (50 - state.get_step()) // 2
+    else:
+        remainingMove = (51 - state.get_step()) // 2
+    print('Remaining move :', remainingMove)
 
-    def time_left():
-        return max_time_per_move - elapsed_time
-    
-    
-    def recherche(currentState: GameState, alpha, beta, depth) -> (float, Action):
+    start_time = time.time()
+    max_time_per_move = remainingTime / remainingMove  # 15 minutes / 25 moves = 18 seconds per move
+    print('Max time :', max_time_per_move)
+
+    stopRecherche = False
+
+    def isRechercheOver():
+        return (time.time() - start_time) >= max_time_per_move
+
+    def recherche(currentState: GameStateAbalone, alpha, beta, depth) -> (float, Action):
         nonlocal nbActionSearched
+        nonlocal stopRecherche
         nbActionSearched += 1
 
+        if isRechercheOver():
+            print("Fin de la recherche, temps écoulé")
+            stopRecherche = True
+            return 0, None  # Ran out of time, return a bad evaluation
 
-        if time_left() <= 0:
-            return -infinity, None  # Ran out of time, return a bad evaluation
-
-                     
         currentPlayer = currentState.get_next_player()
 
         if currentState.is_done():
@@ -251,14 +272,13 @@ def alphabeta_search_time_limited(state: GameState, heuristiqueFct=heuristique.n
         listeAction.sort(key=utils.getOrderScore, reverse=True)
 
         for action in listeAction:
-            
-                   
-            if time_left() <= 0:
-                return -infinity, None  # Ran out of time, return a bad evaluation
-            
             nextState = action.get_next_game_state()
             evaluation, _ = recherche(nextState, -beta, -alpha, depth + 1)
             evaluation = -evaluation
+
+            # La recherche est stoppé, alors on ne sauvegarde pas ce résultat et on sort
+            if stopRecherche:
+                break
 
             if evaluation > bestEval:
                 bestEval = evaluation
@@ -270,21 +290,127 @@ def alphabeta_search_time_limited(state: GameState, heuristiqueFct=heuristique.n
                 nbPruning += 1
                 break
 
+        del listeAction
+
         return bestEval, bestAction
 
     bestEval, bestAction = recherche(state, -infinity, infinity, 0)
-    elapsed_time = time.time() - start_time - previous_time
 
     metrics = {
         "Number of states evaluated": nbActionSearched,
         "Number of prunings": nbPruning,
-        "Elapsed time (s)": elapsed_time,
-    }
+        "Elapsed time (s)": round(time.time() - start_time, 2)
+        }
 
     return bestEval, bestAction, metrics
- 
 
 
+def alphabeta_search_TranspositionV1(
+        state: GameState,
+        transpoTable: TranspositionTable,
+        heuristiqueFct=heuristique.nullHeuristique,
+        cutoff_depth=3
+        ) \
+        -> (float, Action, dict):
+    """
+    Alpha-beta search with a time limit and transposition table
+
+    Args:
+        transpoTable: table de transposition
+        state: Current game state.
+        heuristiqueFct: Heuristic function.
+        cutoff_depth: Maximum search depth.
+
+    Returns:
+        Tuple containing the best evaluation, the best action, and metrics.
+    """
+
+    max_total_time = 900
+    nbActionSearched = 0
+    nbPruning = 0
+    nbTransposition = 0
+
+    start_time = time.time()
+    max_time_per_move = max_total_time / 25  # 15 minutes / 25 moves = 18 seconds per move
+
+    stopRecherche = False
+
+    def isRechercheOver():
+        return (time.time() - start_time) >= max_time_per_move
+
+    def recherche(currentState: GameStateAbalone, alpha, beta, depth) -> (float, Action):
+        nonlocal nbActionSearched
+        nonlocal stopRecherche
+        nonlocal nbTransposition
+        nbActionSearched += 1
+
+        if isRechercheOver():
+            print("Fin de la recherche, temps écoulé")
+            stopRecherche = True
+            return 0, None  # Ran out of time, return a bad evaluation
+
+        currentPlayer = currentState.get_next_player()
+
+        if currentState.is_done():
+            winner = utils.getWinner(currentState)
+            if len(winner) > 1:
+                return 0, None
+            elif winner[0] == currentPlayer:
+                return infinity - 1, None
+            else:
+                return -infinity + 1, None
+
+        # On regarde dans la table de transposition si l'état est présent, si oui on utilise l'évaluation et l'action
+        # stockée
+        if transpoTable.isInTable(currentState):
+            nbTransposition += 1
+            return transpoTable.getEntry(currentState)
+
+        if depth > cutoff_depth:
+            return heuristiqueFct(currentState), None
+
+        bestEval = -infinity
+        bestAction = None
+
+        listeAction = list(currentState.get_possible_actions())
+        listeAction.sort(key=utils.getOrderScore, reverse=True)
+
+        for action in listeAction:
+            nextState = action.get_next_game_state()
+            evaluation, _ = recherche(nextState, -beta, -alpha, depth + 1)
+            evaluation = -evaluation
+
+            # La recherche est stoppé, alors on ne sauvegarde pas ce résultat et on sort de la recherche
+            if stopRecherche:
+                break
+
+            if evaluation > bestEval:
+                bestEval = evaluation
+                bestAction = action
+                alpha = max(alpha, evaluation)
+
+            if bestEval >= beta:
+                nonlocal nbPruning
+                nbPruning += 1
+                break
+
+        del listeAction
+
+        transpoTable.addEntry(currentState, bestEval, bestAction)
+        return bestEval, bestAction
+
+    bestEval, bestAction = recherche(state, -infinity, infinity, 0)
+
+    metrics = {
+        "Number of states evaluated": nbActionSearched,
+        "Number of prunings": nbPruning,
+        "Elapsed time (s)": round(time.time() - start_time, 2),
+        "Number of transpostion": nbTransposition,
+        "Number of overwrites": transpoTable.getNbOverwrites(),
+        "Taille de la table": transpoTable.getLenTable()
+        }
+
+    return bestEval, bestAction, metrics
 
 # Transposition table add too much traitement time - find another way of implementation
 # def alphabeta_search_time_limited(state: GameState, heuristiqueFct=None, cutoff_depth=3) -> [float, Action, dict]:

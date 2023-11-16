@@ -70,11 +70,11 @@ class MyPlayer(PlayerAbalone):
         # while (1):
         #     pass
 
-        evaluation, action, metrics = algoRecherche.alphabeta_search_time_limited(current_state,
-                                                                                  remainingTime=self.get_remaining_time(),
-                                                                                  heuristiqueFct=heuristique.positionHeuristiqueV2,
-                                                                                  cutoff_depth=3
-                                                                                  )
+        evaluation, action, metrics = algoRecherche.alphabeta_search_TranspositionV1(current_state,
+                                                                                     transpoTable=self.tableTranspo,
+                                                                                     heuristiqueFct=heuristique.positionHeuristiqueV2,
+                                                                                     cutoff_depth=3,
+                                                                                     )
 
         print("-----------------------------------------------------------\n"
               f"Résultat de la recherche du joueur {current_state.get_next_player().get_name()} - Tour : "
