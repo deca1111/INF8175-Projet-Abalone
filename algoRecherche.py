@@ -217,6 +217,109 @@ def alphabeta_search_time_limited(state: GameState, heuristiqueFct=heuristique.n
     
     previous_time = time.time() - start_time 
 
+
+    def time_over():
+        return max_time_per_move - previous_time <= 0
+
+    
+    
+    def recherche(currentState: GameState, alpha, beta, depth) -> (float, Action):
+        nonlocal nbActionSearched
+        nbActionSearched += 1
+
+
+        if time_over():
+            return -infinity, None  # Ran out of time, return a bad evaluation
+
+                     
+        currentPlayer = currentState.get_next_player()
+
+        if currentState.is_done():
+            winner = utils.getWinner(currentState)
+            if len(winner) > 1:
+                return 0, None
+            elif winner[0] == currentPlayer:
+                return infinity - 1, None
+            else:
+                return -infinity + 1, None
+
+        if depth > cutoff_depth:
+            return heuristiqueFct(currentState), None
+
+        bestEval = -infinity
+        bestAction = None
+
+        listeAction = list(currentState.get_possible_actions())
+        listeAction.sort(key=utils.getOrderScore, reverse=True)
+
+        for action in listeAction:
+                        
+            nextState = action.get_next_game_state()
+            evaluation, _ = recherche(nextState, -beta, -alpha, depth + 1)
+            evaluation = -evaluation
+
+            if evaluation > bestEval:
+                bestEval = evaluation
+                bestAction = action
+                alpha = max(alpha, evaluation)
+
+            if bestEval >= beta:
+                nonlocal nbPruning
+                nbPruning += 1
+                break
+
+        return bestEval, bestAction
+
+    bestEval, bestAction = recherche(state, -infinity, infinity, 0)
+    elapsed_time = time.time() - start_time - previous_time
+
+    metrics = {
+        "Number of states evaluated": nbActionSearched,
+        "Number of prunings": nbPruning,
+        "Elapsed time (s)": elapsed_time,
+    }
+
+    return bestEval, bestAction, metrics
+ 
+
+
+def alphabeta_search_transposition(state: GameState, heuristiqueFct=heuristique.nullHeuristique, cutoff_depth=3) -> (float, Action, dict):
+    """
+    Alpha-beta search with a time limit.
+
+    Args:
+        state: Current game state.
+        heuristiqueFct: Heuristic function.
+        cutoff_depth: Maximum search depth.
+
+    Returns:
+        Tuple containing the best evaluation, the best action, and metrics.
+    """
+
+    max_total_time = 900
+    nbActionSearched = 0
+    nbPruning = 0
+    elapsed_time = 0
+
+     
+    start_time = time.time()
+    max_time_per_move = max_total_time / 50  # 15 minutes / 50 moves = 18 seconds per move
+    
+    previous_time = time.time() - start_time 
+
+    zobrist_table = [[random.getrandbits(3) for _ in range(9)] for _ in range(9)]
+
+    def generate_key() -> str:
+        
+        key = hashlib.md5(str(state.player).encode()).hexdigest()  # Include player information in the key
+
+        for row in state.board:
+            for cell in row:
+                key ^= zobrist_table[cell][0] if state.player == 1 else zobrist_table[cell][1]
+
+        return key
+
+
     def time_left():
         return max_time_per_move - elapsed_time
     
@@ -285,143 +388,3 @@ def alphabeta_search_time_limited(state: GameState, heuristiqueFct=heuristique.n
  
 
 
-
-# Transposition table add too much traitement time - find another way of implementation
-# def alphabeta_search_time_limited(state: GameState, heuristiqueFct=None, cutoff_depth=3) -> [float, Action, dict]:
-#     """
-#     Alpha-beta search with a time limit.
-# 
-#     Args:
-#         state: Current game state.
-#         heuristiqueFct: Heuristic function.
-#         cutoff_depth: Maximum search depth.
-# 
-#     Returns:
-#         Tuple containing the best evaluation, the best action, and metrics.
-#     """
-# 
-#     max_total_time = 900
-#     nbActionSearched = 0
-#     nbPruning = 0
-#     nbPruning_tt = 0
-#     elapsed_time = 0
-# 
-#     start_time = time.time()
-#     max_time_per_move = max_total_time / 50  # 15 minutes / 50 moves = 18 seconds per move
-#     transposition_table = TranspositionTable()  # Create a transposition table instance
-# 
-#     def time_left():
-#         return max_time_per_move - elapsed_time
-# 
-#     def generate_key(currentState: GameState) -> str:
-#         listeAction = list(currentState.get_possible_actions())
-#         listeAction.sort(key=utils.getOrderScore, reverse=True)
-#         for action in listeAction:
-#             key = hashlib.md5(str(random.randint(0,10000000000000000)).encode()).hexdigest()
-#         return key
-# 
-#     def recherche(currentState: GameState, alpha, beta, depth) -> tuple[float, str]:
-#         nonlocal nbActionSearched, nbPruning_tt, nbPruning
-#         nbPruning_tt = 0 
-#         nbPruning = 0
-# 
-# 
-#         key = generate_key(currentState)
-#         tt_entry = transposition_table.lookup(key)
-# 
-#         if tt_entry is not None and tt_entry[1] >= depth:
-#             if tt_entry[2] == 'exact':
-#                 return tt_entry[0], tt_entry[3]
-#             elif tt_entry[2] == 'lowerbound':
-#                 alpha = max(alpha, tt_entry[0])
-#             elif tt_entry[2] == 'upperbound':
-#                 beta = min(beta, tt_entry[0])
-# 
-#             if alpha >= beta:
-#                 nbPruning_tt += 1
-#                 return tt_entry[0], tt_entry[3]
-# 
-#         nbActionSearched += 1
-# 
-#         if time_left() <= 0:
-#             return -infinity, None  # Ran out of time, return a bad evaluation
-# 
-#         currentPlayer = currentState.get_next_player()
-# 
-#         if currentState.is_done():
-#             winner = utils.getWinner(currentState)
-#             if len(winner) > 1:
-#                 return 0, None
-#             elif winner[0] == currentPlayer:
-#                 return infinity - 1, None
-#             else:
-#                 return -infinity + 1, None
-# 
-#         if depth > cutoff_depth:
-#             return heuristiqueFct(currentState), None
-# 
-#         bestEval = -infinity
-#         bestAction = None
-# 
-#         listeAction = list(currentState.get_possible_actions())
-#         listeAction.sort(key=utils.getOrderScore, reverse=True)
-# 
-#         for action in listeAction:
-#             
-#             if time_left() <= 0:
-#                 return -infinity, None  # Ran out of time, return a bad evaluation
-# 
-#             nextState = action.get_next_game_state()
-#             
-#             # Skip if the next state is already in the transposition table
-#             next_key = generate_key(nextState)
-#             if transposition_table.lookup(next_key) is not None:
-#                 continue
-# 
-#             evaluation, _ = recherche(nextState, -beta, -alpha, depth + 1)
-#             evaluation = -evaluation
-# 
-#             if evaluation > bestEval:
-#                 bestEval = evaluation
-#                 bestAction = action
-#                 alpha = max(alpha, evaluation)
-# 
-#             if bestEval >= beta:
-#                 nbPruning += 1
-#                 break
-# 
-#         # Store the result in the transposition table
-#         if bestEval <= alpha:
-#             tt_entry_type = 'upperbound'
-#         elif bestEval >= beta:
-#             tt_entry_type = 'lowerbound'
-#         else:
-#             tt_entry_type = 'exact'
-# 
-#         transposition_table.store(key, bestEval, depth, tt_entry_type, bestAction)
-# 
-#         return bestEval, bestAction
-# 
-#     bestEval, bestAction = recherche(state, -infinity, infinity, 0)
-#     elapsed_time = time.time() - start_time
-# 
-#     metrics = {
-#         "Number of states evaluated": nbActionSearched,
-#         "Number of prunings": nbPruning,
-#         "Elapsed time (s)": elapsed_time,
-#     }
-# 
-#     return bestEval, bestAction, metrics
-# 
-# # Define your TranspositionTable class
-# class TranspositionTable:
-#     def __init__(self):
-#         self.table = {}
-# 
-#     def store(self, key, value, depth, entry_type, action):
-#         self.table[key] = (value, depth, entry_type, action)
-# 
-#     def lookup(self, key):
-#         if key in self.table:
-#             return self.table[key]
-#         return None

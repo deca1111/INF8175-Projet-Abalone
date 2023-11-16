@@ -54,7 +54,8 @@ aucune bille dehors.
 
 - Pour gagner grandement en performance, il faudrait se pencher sur le problème des chemins redondant menant aux mêmes coups.
 Dans le cours le prof mentionne les tables de transpositions (slide 33, module 2)
-- 1ère implémentation: table de transposition normal qui assign un random key à chaque neoud puis le skock dans une table. Ralenti les performances parce que le system doit parcourit la table a chaque fois pour vérifier si le noeud y es présent. Rajoute des secondes de traitement.
+  - 1ère implémentation: table de transposition normal qui assign un random key à chaque neoud puis le skock dans une table. Ralenti les performances parce que le system doit parcourit la table a chaque fois pour vérifier si le noeud y es présent. Rajoute des secondes de traitement.
+  - A faire: zobrist table with maybe a transposition table
 
 
 
@@ -110,6 +111,8 @@ valeurs des recompenses.
 
 - Il faudra aussi faire en sorte que le calcul de la fonction heuristique soit le plus rapide possible. Globalement, 
 chaque optimisation aura un gros impact sur les performances de l'agent, car on pourra aller plus profond.
+
+- Parler de pourquoi on a utiisé une seule fonction de recherche au lieu de 2 (min et max)
 
 ## II. Évolution
 
