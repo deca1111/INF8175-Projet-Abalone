@@ -49,32 +49,11 @@ class MyPlayer(PlayerAbalone):
         Returns:
             Action: selected feasible action
         """
-        action = list(current_state.get_possible_actions())[0]
-
-        # print(current_state.get_rep())
-        #
-        # score = heuristique.lonelyHeuristique(current_state)
-        #
-        # print("Score estimé de l'action : ", score)
-        #
-        # print("===========================\nEtat suivant :")
-        #
-        # nextState = action.get_next_game_state()
-        #
-        # print(nextState.get_rep())
-        #
-        # score = heuristique.lonelyHeuristique(nextState)
-        #
-        # print("Score estimé de l'action : ", score)
-        #
-        # while (1):
-        #     pass
-
         evaluation, action, metrics = algoRecherche.alphabeta_search_TranspositionV2(current_state,
-                                                                                     transpoTable=self.tableTranspo,
-                                                                                     heuristiqueFct=heuristique.positionHeuristiqueV2,
-                                                                                     cutoff_depth=3,
-                                                                                     )
+                                                                        transpoTable=self.tableTranspo,
+                                                                        heuristiqueFct=heuristique.positionHeuristiqueV2,
+                                                                        max_cutoff_depth=3,
+                                                                        )
 
         print("-----------------------------------------------------------\n"
               f"Résultat de la recherche du joueur {current_state.get_next_player().get_name()} - Tour : "
