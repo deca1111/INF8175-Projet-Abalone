@@ -17,6 +17,7 @@ import utils
 import heuristique
 
 infinity = math.inf
+winScore = 99999
 
 
 def alphabeta_search_depthV1(state: GameState, h, cutoff_depth=3):
@@ -103,7 +104,7 @@ def alphabeta_search_depthV1(state: GameState, h, cutoff_depth=3):
     return max_value(state, -infinity, +infinity, 0)
 
 
-@profile
+# @profile
 def alphabeta_search_depthV2(
         state: GameState,
         heuristiqueFct=heuristique.nullHeuristique,
@@ -154,14 +155,12 @@ def alphabeta_search_depthV2(
             # Il y a égalité
             if len(winner) > 1:
                 return 0, None
-            # Le joueur actuel a gagné, on ajoute -1 car on veut être sur d'actualiser au moins une fois la meilleure
-            # action
+            # Le joueur actuel a gagné
             elif winner[0] == currentPlayer:
-                return infinity - 1, None
-            # Le joueur actuel a perdu, on ajoute +1 car on veut être sur d'actualiser au moins une fois la meilleure
-            # action
+                return winScore - 1, None
+            # Le joueur actuel a perdu
             else:
-                return -infinity + 1, None
+                return -winScore + 1, None
 
         # Si on est trop profond, on retourne l'heuristique de l'état actuel
         if depth > cutoff_depth:
@@ -205,7 +204,7 @@ def alphabeta_search_depthV2(
 
 # @profile
 def alphabeta_search_time_limited(
-        state: GameState,
+        state: GameStateAbalone,
         remainingTime,
         heuristiqueFct=heuristique.nullHeuristique,
         cutoff_depth=3
@@ -258,9 +257,9 @@ def alphabeta_search_time_limited(
             if len(winner) > 1:
                 return 0, None
             elif winner[0] == currentPlayer:
-                return infinity - 1, None
+                return winScore, None
             else:
-                return -infinity + 1, None
+                return -winScore, None
 
         if depth > cutoff_depth:
             return heuristiqueFct(currentState), None
@@ -299,6 +298,123 @@ def alphabeta_search_time_limited(
     metrics = {
         "Number of states evaluated": nbActionSearched,
         "Number of prunings": nbPruning,
+        "Elapsed time (s)": round(time.time() - start_time, 2)
+        }
+
+    return bestEval, bestAction, metrics
+
+
+def alphabeta_search_quiescent(
+        state: GameStateAbalone,
+        remainingTime,
+        heuristiqueFct=heuristique.nullHeuristique,
+        cutoff_depth=3,
+        maxDepth=7
+        ) \
+        -> (float, Action, dict):
+    """
+    Alpha-beta search with a time limit.
+
+    Args:
+        maxDepth: profondeur max de recherche
+        remainingTime: temps restant
+        state: Current game state.
+        heuristiqueFct: Heuristic function.
+        cutoff_depth: profondeur d'arret si etat quiescent
+
+    Returns:
+        Tuple containing the best evaluation, the best action, and metrics.
+    """
+
+    nbActionSearched = 0
+    nbPruning = 0
+    nbExtendQuiescent = 0
+    maxDepthReached = 0
+
+
+    if state.get_step() % 2 == 0:
+        remainingMove = (50 - state.get_step()) // 2
+    else:
+        remainingMove = (51 - state.get_step()) // 2
+    print('Remaining move :', remainingMove)
+
+    start_time = time.time()
+    max_time_per_move = remainingTime / remainingMove  # 15 minutes / 25 moves = 18 seconds per move
+    print('Max time :', max_time_per_move)
+
+    stopRecherche = False
+
+    def isRechercheOver():
+        return (time.time() - start_time) >= max_time_per_move
+
+    def recherche(currentState: GameStateAbalone, alpha, beta, depth) -> (float, Action):
+        nonlocal nbActionSearched
+        nonlocal stopRecherche
+        nonlocal nbExtendQuiescent
+        nonlocal maxDepthReached
+        nbActionSearched += 1
+
+        if isRechercheOver():
+            print("Fin de la recherche, temps écoulé")
+            stopRecherche = True
+            return 0, None  # Ran out of time, return a bad evaluation
+
+        currentPlayer = currentState.get_next_player()
+
+        if currentState.is_done():
+            winner = utils.getWinner(currentState)
+            if len(winner) > 1:
+                return 0, None
+            elif winner[0] == currentPlayer:
+                return winScore, None
+            else:
+                return -winScore, None
+
+        listeAction = list(currentState.get_possible_actions())
+        dictScoreOrder, isQuiescent = utils.getOrderScoreAndQuiescient(listeAction)
+
+        if depth > cutoff_depth and not isQuiescent:
+            nbExtendQuiescent += 1
+
+        if (depth>maxDepth) or (depth > cutoff_depth and isQuiescent):
+            if depth > maxDepthReached:
+                maxDepthReached = depth
+            return heuristiqueFct(currentState), None
+
+        bestEval = -infinity
+        bestAction = None
+
+        listeAction.sort(key=dictScoreOrder.get, reverse=True)
+        for action in listeAction:
+            nextState = action.get_next_game_state()
+            evaluation, _ = recherche(nextState, -beta, -alpha, depth + 1)
+            evaluation = -evaluation
+
+            # La recherche est stoppé, alors on ne sauvegarde pas ce résultat et on sort
+            if stopRecherche:
+                break
+
+            if evaluation > bestEval:
+                bestEval = evaluation
+                bestAction = action
+                alpha = max(alpha, evaluation)
+
+            if bestEval >= beta:
+                nonlocal nbPruning
+                nbPruning += 1
+                break
+
+        del listeAction
+
+        return bestEval, bestAction
+
+    bestEval, bestAction = recherche(state, -infinity, infinity, 0)
+
+    metrics = {
+        "Number of states evaluated": nbActionSearched,
+        "Number of prunings": nbPruning,
+        "Number of extend quiescent": nbExtendQuiescent,
+        "Max depth": maxDepth,
         "Elapsed time (s)": round(time.time() - start_time, 2)
         }
 
@@ -356,9 +472,9 @@ def alphabeta_search_TranspositionV1(
             if len(winner) > 1:
                 return 0, None
             elif winner[0] == currentPlayer:
-                return infinity - 1, None
+                return winScore - 1, None
             else:
-                return -infinity + 1, None
+                return -winScore + 1, None
 
         # On regarde dans la table de transposition si l'état est présent, si oui on utilise l'évaluation et l'action
         # stockée
@@ -464,9 +580,9 @@ def alphabeta_search_TranspositionV2(
             if len(winner) > 1:
                 return 0, None
             elif winner[0] == currentPlayer:
-                return infinity - 1, None
+                return winScore - 1, None
             else:
-                return -infinity + 1, None
+                return -winScore + 1, None
 
         # On regarde dans la table de transposition si l'état est présent, si oui on utilise l'évaluation et l'action
         # stockée

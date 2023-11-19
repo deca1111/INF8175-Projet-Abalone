@@ -1,21 +1,13 @@
-from TranspositionTable import TranspositionTable
 from player_abalone import PlayerAbalone
 from seahorse.game.action import Action
 from seahorse.game.game_state import GameState
 from seahorse.utils.custom_exceptions import MethodNotImplementedError
-from master_abalone import MasterAbalone
 
-from memory_profiler import profile
+import algoRecherche
+import heuristique
 
 import math
 import random
-
-# Import des fonctions du projet
-import heuristique
-import utils
-import algoRecherche
-
-infinity = math.inf
 
 
 class MyPlayer(PlayerAbalone):
@@ -36,7 +28,6 @@ class MyPlayer(PlayerAbalone):
             time_limit (float, optional): the time limit in (s)
         """
         super().__init__(piece_type, name, time_limit, *args)
-        self.tableTranspo = TranspositionTable()
 
     def compute_action(self, current_state: GameState, **kwargs) -> Action:
         """
@@ -49,11 +40,12 @@ class MyPlayer(PlayerAbalone):
         Returns:
             Action: selected feasible action
         """
-        evaluation, action, metrics = algoRecherche.alphabeta_search_TranspositionV2(current_state,
-                                                                        transpoTable=self.tableTranspo,
-                                                                        heuristiqueFct=heuristique.positionHeuristiqueV2,
-                                                                        max_cutoff_depth=100,
-                                                                        )
+
+        evaluation, action, metrics = algoRecherche.alphabeta_search_quiescent(current_state,
+                                                                               remainingTime=self.get_remaining_time(),
+                                                                               heuristiqueFct=heuristique.positionHeuristiqueV2,
+                                                                               cutoff_depth=1
+                                                                               )
 
         print("-----------------------------------------------------------\n"
               f"Résultat de la recherche du joueur {current_state.get_next_player().get_name()} - Tour : "
@@ -70,8 +62,8 @@ class MyPlayer(PlayerAbalone):
                 print(f"\t{player.get_name()} : {futureState.get_player_score(player)}")
         else:
             print("========================================================== Pas d'action proposé =================")
-            # Si il n'y a pas d'action retournée par la recherche (c'est que toutes les actions sont perdante), on
-            # prend la première action disponible
+            # Si il n'y a pas d'action retournée par la recherche (il y a surement un problème), on prend la première
+            # action disponible
             action = list(current_state.get_possible_actions())[0]
 
         # Si l'action n'est pas faisable, on prend la première action disponible

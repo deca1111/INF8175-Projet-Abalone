@@ -1,6 +1,9 @@
+from typing import Tuple, Dict
+
 from player_abalone import PlayerAbalone
 from seahorse.game.action import Action
 from seahorse.game.game_state import GameState
+from game_state_abalone import GameStateAbalone
 from seahorse.utils.custom_exceptions import MethodNotImplementedError
 from master_abalone import MasterAbalone
 
@@ -8,6 +11,7 @@ import math
 import random
 
 infinity = math.inf
+
 
 def manhattanDist(A, B):
     """
@@ -28,6 +32,7 @@ def manhattanDist(A, B):
     if diff in mask2:
         dist += 2
     return dist
+
 
 def getWinner(state: GameState):
     '''
@@ -63,15 +68,14 @@ def getWinner(state: GameState):
 
 
 def getOrderScore(action: Action) -> float:
-    '''
+    """
     Estimation sommaire de l'interet d'une action
     Args:
         action: action à étudier
 
     Returns:
         float: score de l'action
-    '''
-
+    """
     # Définition de l'état actuel et de l'état engendré par l'action
     currentState = action.get_current_game_state()
     nextState = action.get_next_game_state()
@@ -96,19 +100,84 @@ def getOrderScore(action: Action) -> float:
     elif playerDiffScore:
         score -= 1
 
-    # print("Différence de score Player : ", playerDiffScore)
-    # print("Différence de score Adversaire : ", adversaryDiffScore)
-    #
-    # print(f"Current game state: \n{currentState.get_rep()}")
-    #
-    # print(f"Next game state: \n{nextState.get_rep()}")
-
-    # [print(*x) for x in currentState.get_rep().get_grid()]
-    # [print(a, b.__dict__) for a, b in currentState.get_rep().env.items()]
     return score
 
 
-def isLonely(state:GameState, coord, color):
+def getPlayerDiffScore(action: Action) -> float:
+    # Définition de l'état actuel et de l'état engendré par l'action
+    currentState = action.get_current_game_state()
+    nextState = action.get_next_game_state()
+
+    # Définition du joueur et de l'adversaire
+    player = currentState.get_next_player()
+
+    return abs(
+        nextState.get_player_score(player)
+        - currentState.get_player_score(player)
+        )
+
+
+def getAdversaryDiffScore(action: Action) -> float:
+    # Définition de l'état actuel et de l'état engendré par l'action
+    currentState = action.get_current_game_state()
+    nextState = action.get_next_game_state()
+
+    # Définition du joueur et de l'adversaire
+    adversary = nextState.get_next_player()
+
+    return abs(
+        nextState.get_player_score(adversary)
+        - currentState.get_player_score(adversary)
+        )
+
+
+def isQuiescent(actions: list[Action]) -> bool:
+    """
+    Détermine si l'état est quiescient, c'est à dire si il n'y a pas d'action qui élimine une pièce adverse
+    Args:
+        actions: Liste des actions possibles
+
+    Returns:
+        bool: True si l'état est quiescient, False sinon
+    """
+    return all(getAdversaryDiffScore(action) != 1 for action in actions)
+
+
+def getOrderScoreAndQuiescient(listActions: list[Action]) -> tuple[dict[Action, int], bool]:
+    isQuiescent = True
+    orderScore = {}
+    for action in listActions:
+        # Définition de l'état actuel et de l'état engendré par l'action
+        currentState = action.get_current_game_state()
+        nextState = action.get_next_game_state()
+
+        # Définition du joueur et de l'adversaire
+        player = currentState.get_next_player()
+        adversary = nextState.get_next_player()
+
+        # Calcul des différences de score engendré par l'action
+        # Soit 0 si aucune des billes du joueurs sont eliminé sinon 1
+        playerDiffScore = abs(nextState.get_player_score(player) - currentState.get_player_score(player))
+        # Soit 0 si aucune des billes de l'adversaire sont eliminé sinon 1
+        adversaryDiffScore = abs(nextState.get_player_score(adversary) - currentState.get_player_score(adversary))
+
+        # Initialisation
+        score = 0
+
+        # On veut étudier en priorité les coups qui éliminent une pièce de l'adversaire
+        if adversaryDiffScore:
+            isQuiescent = False
+            score += 1
+        # On veut étudier en dernier les coups qui éliminent nos propres pièces
+        elif playerDiffScore:
+            score -= 1
+
+        orderScore[action] = score
+
+    return orderScore, isQuiescent
+
+
+def isLonely(state: GameStateAbalone, coord, color):
     """
     Détermine si une bille est isolée, c'est à dire qu'elle n'a aucune bille alliée dans son voisinage
     Args:
@@ -121,22 +190,4 @@ def isLonely(state:GameState, coord, color):
     """
     voisinage = state.get_neighbours(coord[0], coord[1])
 
-    for voisin in voisinage:
-        # Si un bille voisine est de la même couleur alors on renvoi faux
-        if voisinage[voisin][0] == color:
-            return False
-
-    # Si aucun voisin allié, renvoi vrai
-    return True
-
-
-
-
-
-
-
-
-
-
-
-
+    return all(voisinage[voisin][0] != color for voisin in voisinage)

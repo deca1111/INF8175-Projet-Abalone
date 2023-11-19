@@ -44,7 +44,7 @@ class MyPlayer(PlayerAbalone):
         evaluation, action, metrics = algoRecherche.alphabeta_search_time_limited(current_state,
                                                                                   remainingTime=self.get_remaining_time(),
                                                                                   heuristiqueFct=heuristique.positionHeuristiqueV2,
-                                                                                  cutoff_depth=3
+                                                                                  cutoff_depth= 3
                                                                                   )
 
         print("-----------------------------------------------------------\n"

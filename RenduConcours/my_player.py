@@ -118,11 +118,11 @@ def alphabeta_search_time_limited(
         remainingMove = (50 - state.get_step()) // 2
     else:
         remainingMove = (51 - state.get_step()) // 2
-    # print('Remaining move :', remainingMove)
+    print('Remaining move :', remainingMove)
 
     start_time = time.time()
     max_time_per_move = remainingTime / remainingMove  # 15 minutes / 25 moves = 18 seconds per move
-    # print('Max time :', max_time_per_move)
+    print('Max time :', max_time_per_move)
 
     stopRecherche = False
 
@@ -135,7 +135,7 @@ def alphabeta_search_time_limited(
         nbActionSearched += 1
 
         if isRechercheOver():
-            # print("Fin de la recherche, temps écoulé")
+            print("Fin de la recherche, temps écoulé")
             stopRecherche = True
             return 0, None  # Ran out of time, return a bad evaluation
 
