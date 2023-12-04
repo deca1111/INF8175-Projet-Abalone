@@ -1,6 +1,9 @@
 import random
+import copy
+from typing import Tuple
 
 from game_state_abalone import GameStateAbalone
+from seahorse.game.action import Action
 
 
 class TranspositionTable:
@@ -97,20 +100,20 @@ class TranspositionTable:
             h ^= self.zobristTable[coord[0]][coord[1]][indexPiece][indexJoueur]
         return h
 
-    def addEntry(self, state, estimateScore, bestMove):
+    def addEntry(self, state, estimateScore: float, bestMove: Action, flag: str, shearchDepth: int, previousBestMove: Action):
         if len(self.table) < self.maxLen:
             key = self.getZobristHash(state)
             if key in self.table:
                 self.nbOverwrites += 1
             else:
                 self.lenTable += 1
-            self.table[key] = (estimateScore, bestMove)
+            self.table[key] = (estimateScore, copy.deepcopy(bestMove), flag, shearchDepth, copy.deepcopy(previousBestMove))
 
     def isInTable(self, state: GameStateAbalone) -> bool:
         key = self.getZobristHash(state)
         return key in self.table
 
-    def getEntry(self, state: GameStateAbalone):
+    def getEntry(self, state: GameStateAbalone) -> Tuple[float, Action, str, int, Action]:
         """
         Retrieves an entry from the table.
 

@@ -157,10 +157,10 @@ def alphabeta_search_depthV2(
                 return 0, None
             # Le joueur actuel a gagné
             elif winner[0] == currentPlayer:
-                return winScore - 1, None
+                return winScore, None
             # Le joueur actuel a perdu
             else:
-                return -winScore + 1, None
+                return -winScore, None
 
         # Si on est trop profond, on retourne l'heuristique de l'état actuel
         if depth > cutoff_depth:
@@ -248,7 +248,7 @@ def alphabeta_search_time_limited(
         if isRechercheOver():
             print("Fin de la recherche, temps écoulé")
             stopRecherche = True
-            return 0, None  # Ran out of time, return a bad evaluation
+            return 0, None
 
         currentPlayer = currentState.get_next_player()
 
@@ -422,7 +422,8 @@ def alphabeta_search_quiescent(
 
 
 def alphabeta_search_TranspositionV1(
-        state: GameState,
+        state: GameStateAbalone,
+        remainingTime,
         transpoTable: TranspositionTable,
         heuristiqueFct=heuristique.nullHeuristique,
         cutoff_depth=3
@@ -441,17 +442,22 @@ def alphabeta_search_TranspositionV1(
         Tuple containing the best evaluation, the best action, and metrics.
     """
 
-    max_total_time = 900
     nbActionSearched = 0
     nbPruning = 0
     nbTransposition = 0
+    if state.get_step() % 2 == 0:
+        remainingMove = (50 - state.get_step()) // 2
+    else:
+        remainingMove = (51 - state.get_step()) // 2
+    print('Remaining move :', remainingMove)
 
     start_time = time.time()
-    max_time_per_move = max_total_time / 25  # 15 minutes / 25 moves = 18 seconds per move
+    max_time_per_move = remainingTime / remainingMove  # 15 minutes / 25 moves = 18 seconds per move
+    print('Max time :', max_time_per_move)
 
     stopRecherche = False
 
-    def isRechercheOver():
+    def isTimeOver():
         return (time.time() - start_time) >= max_time_per_move
 
     def recherche(currentState: GameStateAbalone, alpha, beta, depth) -> (float, Action):
@@ -460,40 +466,57 @@ def alphabeta_search_TranspositionV1(
         nonlocal nbTransposition
         nbActionSearched += 1
 
-        if isRechercheOver():
+        if isTimeOver():
             print("Fin de la recherche, temps écoulé")
             stopRecherche = True
-            return 0, None  # Ran out of time, return a bad evaluation
+            return 0, None
 
         currentPlayer = currentState.get_next_player()
+        # print("Recherche pour le joueur", currentPlayer.get_name(), "Profondeur", depth)
 
         if currentState.is_done():
             winner = utils.getWinner(currentState)
             if len(winner) > 1:
                 return 0, None
             elif winner[0] == currentPlayer:
-                return winScore - 1, None
+                return winScore, None
             else:
-                return -winScore + 1, None
+                return -winScore, None
 
-        # On regarde dans la table de transposition si l'état est présent, si oui on utilise l'évaluation et l'action
-        # stockée
+        TtBestMove = None
+        # On regarde dans la table de transposition si l'état est présent
         if transpoTable.isInTable(currentState):
-            nbTransposition += 1
-            return transpoTable.getEntry(currentState)
+            TtEstimateScore, TtBestMove, TtFlag, TtShearchDepth, TtPreviousBestMove = transpoTable.getEntry(currentState)
+            # On vérifie si on doit utiliser l'évaluation de la table ou si on continue à chercher
+            if TtShearchDepth >= depth:
+                if TtFlag == 'exact':
+                    nbTransposition += 1
+                    return TtEstimateScore, TtBestMove
+                elif TtFlag == 'lowerbound' and TtEstimateScore >= beta:
+                    nbTransposition += 1
+                    return TtEstimateScore, TtBestMove
+                elif TtFlag == 'upperbound' and TtEstimateScore <= alpha:
+                    nbTransposition += 1
+                    return TtEstimateScore, TtBestMove
 
-        if depth > cutoff_depth:
+        if depth == 0:
             return heuristiqueFct(currentState), None
 
-        bestEval = -infinity
         bestAction = None
+        bestEval = -infinity
 
         listeAction = list(currentState.get_possible_actions())
         listeAction.sort(key=utils.getOrderScore, reverse=True)
+        # Si on a un best move de la TT, on l'étudie en premier
+        if TtBestMove:
+            listeAction.remove(TtBestMove)
+            listeAction.insert(0, TtBestMove)
+
+        flag = 'upperbound'
 
         for action in listeAction:
             nextState = action.get_next_game_state()
-            evaluation, _ = recherche(nextState, -beta, -alpha, depth + 1)
+            evaluation, _ = recherche(nextState, -beta, -alpha, depth - 1)
             evaluation = -evaluation
 
             # La recherche est stoppé, alors on ne sauvegarde pas ce résultat et on sort de la recherche
@@ -503,19 +526,28 @@ def alphabeta_search_TranspositionV1(
             if evaluation > bestEval:
                 bestEval = evaluation
                 bestAction = action
-                alpha = max(alpha, evaluation)
+                if evaluation > alpha:
+                    flag = 'exact'
+                    alpha = evaluation
 
+            # Pruning
             if bestEval >= beta:
                 nonlocal nbPruning
                 nbPruning += 1
+                flag = 'lowerbound'
                 break
 
         del listeAction
 
-        transpoTable.addEntry(currentState, bestEval, bestAction)
-        return bestEval, bestAction
+        # On ajoute l'entrée dans la table de transposition
+        if flag == 'lowerbound':
+            transpoTable.addEntry(currentState, beta, bestAction, flag, depth, TtBestMove)
+        else:
+            transpoTable.addEntry(currentState, alpha, bestAction, flag, depth, TtBestMove)
 
-    bestEval, bestAction = recherche(state, -infinity, infinity, 0)
+        return alpha, bestAction
+
+    bestEval, bestAction = recherche(state, -infinity, infinity, cutoff_depth)
 
     metrics = {
         "Number of states evaluated": nbActionSearched,
@@ -523,7 +555,8 @@ def alphabeta_search_TranspositionV1(
         "Elapsed time (s)": round(time.time() - start_time, 2),
         "Number of transpostion": nbTransposition,
         "Number of overwrites": transpoTable.getNbOverwrites(),
-        "Taille de la table": transpoTable.getLenTable()
+        "Taille de la table": transpoTable.getLenTable(),
+        "Taille max de la table": transpoTable.getMaxLen()
         }
 
     return bestEval, bestAction, metrics
@@ -640,3 +673,171 @@ def alphabeta_search_TranspositionV2(
         }
 
     return bestEval, bestAction, metrics
+
+
+def alphabeta_search_IterativeDeepening(
+        state: GameStateAbalone,
+        remainingTime,
+        transpoTable: TranspositionTable,
+        heuristiqueFct=heuristique.nullHeuristique,
+        cutoff_depth=3
+        ) \
+        -> (float, Action, dict):
+    """
+    **alphabeta_search_IterativeDeepeningV1**
+
+    Performs an iterative deepening alpha-beta search on a game state to find the best action.
+
+    Args:
+    - state: The current game state (instance of GameStateAbalone).
+    - remainingTime: The remaining time for the search.
+    - transpoTable: The transposition table used for storing and retrieving game state evaluations (instance of TranspositionTable).
+    - heuristiqueFct: The heuristic function used to evaluate game states (default: heuristique.nullHeuristique).
+    - cutoff_depth: The maximum depth of the search tree (default: 3).
+
+    Returns:
+    A tuple containing the best evaluation score, the best action, and a dictionary of metrics.
+
+    Raises:
+    None.
+
+    """
+
+    nbActionSearched = 0
+    nbPruning = 0
+    nbTransposition = 0
+    if state.get_step() % 2 == 0:
+        remainingMove = (50 - state.get_step()) // 2
+    else:
+        remainingMove = (51 - state.get_step()) // 2
+    print('Remaining move :', remainingMove)
+
+    start_time = time.time()
+    max_time_per_move = remainingTime / remainingMove  # 15 minutes / 25 moves = 18 seconds per move
+    print('Max time :', max_time_per_move)
+
+    stopRecherche = False
+
+    def isTimeOver():
+        return (time.time() - start_time) >= max_time_per_move
+
+    def recherche(currentState: GameStateAbalone, alpha, beta, depth) -> (float, Action):
+        nonlocal nbActionSearched
+        nonlocal stopRecherche
+        nonlocal nbTransposition
+        nbActionSearched += 1
+
+        if stopRecherche or isTimeOver():
+            print("Fin de la recherche, temps écoulé")
+            stopRecherche = True
+            return 0, None
+
+        currentPlayer = currentState.get_next_player()
+        # print("Recherche pour le joueur", currentPlayer.get_name(), "Profondeur", depth)
+
+        if currentState.is_done():
+            winner = utils.getWinner(currentState)
+            if len(winner) > 1:
+                return 0, None
+            elif winner[0] == currentPlayer:
+                return winScore, None
+            else:
+                return -winScore, None
+
+        TtBestMove = None
+        # On regarde dans la table de transposition si l'état est présent
+        if transpoTable.isInTable(currentState):
+            TtEstimateScore, TtBestMove, TtFlag, TtShearchDepth, TtPreviousBestMove = transpoTable.getEntry(
+                currentState)
+            # On vérifie si on doit utiliser l'évaluation de la table ou si on continue à chercher
+            if TtShearchDepth >= depth:
+                if TtFlag == 'exact':
+                    nbTransposition += 1
+                    return TtEstimateScore, TtBestMove
+                elif TtFlag == 'lowerbound' and TtEstimateScore >= beta:
+                    nbTransposition += 1
+                    return TtEstimateScore, TtBestMove
+                elif TtFlag == 'upperbound' and TtEstimateScore <= alpha:
+                    nbTransposition += 1
+                    return TtEstimateScore, TtBestMove
+
+        if depth == 0:
+            return heuristiqueFct(currentState), None
+
+        bestAction = None
+        bestEval = -infinity
+
+        listeAction = list(currentState.get_possible_actions())
+        listeAction.sort(key=utils.getOrderScore, reverse=True)
+        # Si on a un best move de la TT, on l'étudie en premier
+        if TtBestMove:
+            listeAction.remove(TtBestMove)
+            listeAction.insert(0, TtBestMove)
+
+        flag = 'upperbound'
+
+        for action in listeAction:
+            nextState = action.get_next_game_state()
+            evaluation, _ = recherche(nextState, -beta, -alpha, depth - 1)
+            evaluation = -evaluation
+
+            # La recherche est stoppé, alors on ne sauvegarde pas ce résultat et on sort de la recherche
+            if stopRecherche:
+                break
+
+            if evaluation > bestEval:
+                bestEval = evaluation
+                bestAction = action
+                if evaluation > alpha:
+                    flag = 'exact'
+                    alpha = evaluation
+
+            # Pruning
+            if bestEval >= beta:
+                nonlocal nbPruning
+                nbPruning += 1
+                flag = 'lowerbound'
+                break
+
+        del listeAction
+
+        # On ajoute l'entrée dans la table de transposition
+        if flag == 'lowerbound':
+            transpoTable.addEntry(currentState, beta, bestAction, flag, depth, TtBestMove)
+        else:
+            transpoTable.addEntry(currentState, alpha, bestAction, flag, depth, TtBestMove)
+
+        return bestEval, bestAction
+
+    maxDepthReached = 0
+    maxDepthFinished = 0
+
+    currentBestEval = -infinity
+    currentBestAction = None
+    # Iterative deepening
+    for depth in range(1, cutoff_depth + 1):
+        bestEval, bestAction = recherche(state, -infinity, infinity, depth)
+        if bestEval > currentBestEval:
+            currentBestEval = bestEval
+            currentBestAction = bestAction
+        if stopRecherche:
+            maxDepthReached = depth
+            break
+        else:
+            maxDepthFinished = depth
+
+
+    metrics = {
+        "Number of states evaluated": nbActionSearched,
+        "Number of prunings": nbPruning,
+        "Elapsed time (s)": round(time.time() - start_time, 2),
+        "Number of transpostion": nbTransposition,
+        "Number of overwrites": transpoTable.getNbOverwrites(),
+        "Taille de la table": transpoTable.getLenTable(),
+        "Taille max de la table": transpoTable.getMaxLen(),
+        "Max depth reached": maxDepthReached,
+        "Max depth finished": maxDepthFinished
+        }
+
+    return currentBestEval, currentBestAction, metrics
+

@@ -50,12 +50,12 @@ class MyPlayer(PlayerAbalone):
             Action: selected feasible action
         """
 
-        evaluation, action, metrics = algoRecherche.alphabeta_search_TranspositionV1(current_state,
-                                                                                     transpoTable=self.tableTranspo,
-                                                                                     remainingTime=self.get_remaining_time(),
-                                                                                     heuristiqueFct=heuristique.positionHeuristiqueV2,
-                                                                                     cutoff_depth=4,
-                                                                                     )
+        evaluation, action, metrics = algoRecherche.alphabeta_search_IterativeDeepening(current_state,
+                                                                                        transpoTable=self.tableTranspo,
+                                                                                        remainingTime=self.get_remaining_time(),
+                                                                                        heuristiqueFct=heuristique.positionHeuristiqueV2,
+                                                                                        cutoff_depth=10,
+                                                                                        )
 
         print("-----------------------------------------------------------\n"
               f"Résultat de la recherche du joueur {current_state.get_next_player().get_name()} - Tour : "
