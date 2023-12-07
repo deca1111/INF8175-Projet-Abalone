@@ -1,3 +1,6 @@
+# VALETTE (2307835)
+# FATAKI (1930768)
+
 from game_state_abalone import GameStateAbalone
 from player_abalone import PlayerAbalone
 from seahorse.game.action import Action
