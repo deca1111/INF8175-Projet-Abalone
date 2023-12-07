@@ -208,7 +208,8 @@ def lonelyHeuristique(state: GameStateAbalone):
 def positionHeuristiqueV2(state: GameStateAbalone):
     """
     2ème version de l'heuristique qui évalue un état en fonction des billes sur le plateau
-    Cette fois ci on va faire en sorte que l'évaluation soit symetrique, c'est à dire que le score pour un joueur soit l'opposé de celui de son adversaire
+    Cette fois ci on va faire en sorte que l'évaluation soit symetrique, c'est à dire que le score pour un joueur soit
+    l'opposé de celui de son adversaire (jeu à somme nulle).
     On va donc utiliser une seule table de correspondance distance/score que voici :
 
            -5-5-5-5-5
@@ -222,7 +223,7 @@ def positionHeuristiqueV2(state: GameStateAbalone):
            -5-5-5-5-5
 
            Correspondance distance au centre / score :
-           >= 1 / +7
+           <= 1 / +7
               2 / +2
               3 / -1
               4 / -5
@@ -231,14 +232,15 @@ def positionHeuristiqueV2(state: GameStateAbalone):
         state: État de la partie actuelle
 
     Returns:
-        float: évaluation de la position pour le joeur qui doit jouer
+        float: évaluation de la position pour le joueur qui doit jouer
     """
 
     # Table de correspondance distance/score
     distScore = [7, 7, 2, -1, -5]
 
-    scorePiecePerdu = 100
-
+    # Score pour chaque pièce (pour pénaliser la perte de pièce)
+    scorePiece = 100
+    # Score pour chaque pièce isolé (pour pénaliser les pièces isolé)
     scoreLonely = 5
 
     playerId = state.get_next_player().get_id()
@@ -246,6 +248,7 @@ def positionHeuristiqueV2(state: GameStateAbalone):
     scoreJoueur = 0
     scoreAdversaire = 0
 
+    # Calcul des coordonnées du centre du plateau
     dim = state.get_rep().get_dimensions()
     centre = (dim[0] // 2, dim[1] // 2)
 
@@ -256,8 +259,7 @@ def positionHeuristiqueV2(state: GameStateAbalone):
         # Determine si la pièce est isolé
         isLonely = utils.isLonely(state, coord, piece.get_type())
 
-        # print(coord, piece.__dict__, distance)
-
+        # Ajout du score en fonction de la distance et du fait que la pièce soit isolé ou non
         if piece.get_owner_id() == playerId:
             scoreJoueur += distScore[distance]
             if isLonely:
@@ -267,12 +269,11 @@ def positionHeuristiqueV2(state: GameStateAbalone):
             if isLonely:
                 scoreAdversaire -= scoreLonely
 
-    # Ajout du score (négatif donc pénalité) avec un facteur choisi
-    # Après des tests la valeur de 100 semble bien comparé aux autres valeurs
+    # Ajout des pénalités pour les pièces perdues
     for p in state.get_players():
         if p.get_id() == playerId:
-            scoreJoueur += scorePiecePerdu * state.get_player_score(p)
+            scoreJoueur += scorePiece * state.get_player_score(p)
         else:
-            scoreAdversaire += scorePiecePerdu * state.get_player_score(p)
+            scoreAdversaire += scorePiece * state.get_player_score(p)
 
     return scoreJoueur-scoreAdversaire

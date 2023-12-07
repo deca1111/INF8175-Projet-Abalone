@@ -223,8 +223,11 @@ def alphabeta_search_time_limited(
         Tuple containing the best evaluation, the best action, and metrics.
     """
 
+    # Metrics
     nbActionSearched = 0
     nbPruning = 0
+
+    # Gestion du temps
     if state.get_step() % 2 == 0:
         remainingMove = (50 - state.get_step()) // 2
     else:
@@ -232,15 +235,30 @@ def alphabeta_search_time_limited(
     print('Remaining move :', remainingMove)
 
     start_time = time.time()
-    max_time_per_move = remainingTime / remainingMove  # 15 minutes / 25 moves = 18 seconds per move
+    max_time_per_move = remainingTime / remainingMove
     print('Max time :', max_time_per_move)
 
     stopRecherche = False
 
     def isRechercheOver():
+        """
+        Fonction qui vérifie si la recherche est terminée en fonction du temps écoulé
+        Returns: True si la recherche est terminée, False sinon
+        """
         return (time.time() - start_time) >= max_time_per_move
 
     def recherche(currentState: GameStateAbalone, alpha, beta, depth) -> (float, Action):
+        """
+        Fonction de recherche alpha-beta pruning
+        Args:
+            currentState: Etat actuel du jeu
+            alpha: meilleur score trouvé pour le joueur actuel
+            beta: meilleur score  trouvé pour l'adversaire
+            depth: profondeur actuelle
+
+        Returns: un tuple contenant le meilleur score trouvé et la meilleur action
+        """
+        # Metrics
         nonlocal nbActionSearched
         nonlocal stopRecherche
         nbActionSearched += 1
@@ -250,8 +268,10 @@ def alphabeta_search_time_limited(
             stopRecherche = True
             return 0, None
 
+        # Joueur actuel selon l'état
         currentPlayer = currentState.get_next_player()
 
+        # Si l'état est final, on renvoi s’il y a victoire, défaite ou égalité
         if currentState.is_done():
             winner = utils.getWinner(currentState)
             if len(winner) > 1:
@@ -261,15 +281,19 @@ def alphabeta_search_time_limited(
             else:
                 return -winScore, None
 
+        # Si on est trop profond, on retourne l'heuristique de l'état actuel
         if depth > cutoff_depth:
             return heuristiqueFct(currentState), None
 
+        # Initialisation des variables
         bestEval = -infinity
         bestAction = None
 
+        # Création et ordonnance de la liste des actions possible
         listeAction = list(currentState.get_possible_actions())
         listeAction.sort(key=utils.getOrderScore, reverse=True)
 
+        # Parcours et évaluation des actions possibles
         for action in listeAction:
             nextState = action.get_next_game_state()
             evaluation, _ = recherche(nextState, -beta, -alpha, depth + 1)
@@ -279,22 +303,28 @@ def alphabeta_search_time_limited(
             if stopRecherche:
                 break
 
+            # Si l'action est meilleure que la meilleure actuelle, on actualise
             if evaluation > bestEval:
                 bestEval = evaluation
                 bestAction = action
                 alpha = max(alpha, evaluation)
 
+            # Si l'évaluation est trop bonne, l'adversaire ne la jouera pas, on arrête la recherche pour ce noeud
             if bestEval >= beta:
                 nonlocal nbPruning
                 nbPruning += 1
                 break
 
+        # On supprime la liste des actions possibles pour être sur de bien libérer la mémoire
+        # (pas forcement utile avec les dernières versions de seahorse)
         del listeAction
 
         return bestEval, bestAction
 
+    # Lancement de la recherche
     bestEval, bestAction = recherche(state, -infinity, infinity, 0)
 
+    # Metrics
     metrics = {
         "Number of states evaluated": nbActionSearched,
         "Number of prunings": nbPruning,
@@ -675,6 +705,7 @@ def alphabeta_search_TranspositionV2(
     return bestEval, bestAction, metrics
 
 
+# @profile
 def alphabeta_search_IterativeDeepening(
         state: GameStateAbalone,
         remainingTime,
@@ -826,7 +857,6 @@ def alphabeta_search_IterativeDeepening(
         else:
             maxDepthFinished = depth
 
-
     metrics = {
         "Number of states evaluated": nbActionSearched,
         "Number of prunings": nbPruning,
@@ -840,4 +870,3 @@ def alphabeta_search_IterativeDeepening(
         }
 
     return currentBestEval, currentBestAction, metrics
-

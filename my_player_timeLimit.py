@@ -41,6 +41,9 @@ class MyPlayer(PlayerAbalone):
             Action: selected feasible action
         """
 
+        # Lance la recherche avec un temps limité
+        # La profondeur est fixé à 3, après test c'est la profondeur qui donne les meilleurs résultats en terme
+        # d'utilisation du temps
         evaluation, action, metrics = algoRecherche.alphabeta_search_time_limited(current_state,
                                                                                   remainingTime=self.get_remaining_time(),
                                                                                   heuristiqueFct=heuristique.positionHeuristiqueV2,
@@ -50,10 +53,10 @@ class MyPlayer(PlayerAbalone):
         print("-----------------------------------------------------------\n"
               f"Résultat de la recherche du joueur {current_state.get_next_player().get_name()} - Tour : "
               f"{current_state.get_step()}")
-        # Affichage des metriques
+        # Affichage des métriques
         for key in metrics:
             print(key, " : ", metrics[key])
-        print("Meilleur score obtenue :", evaluation)
+        print("Meilleur évaluation obtenue :", evaluation)
 
         print("Scores après l'action :")
         if action:

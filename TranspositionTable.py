@@ -4,6 +4,8 @@ from typing import Tuple
 
 from game_state_abalone import GameStateAbalone
 from seahorse.game.action import Action
+from weakref import WeakValueDictionary
+
 
 
 class TranspositionTable:
@@ -38,7 +40,7 @@ class TranspositionTable:
 
     def __init__(self, dimensionBoard=(17, 9), maxLen: int = pow(2, 20)):
         random.seed(999)
-        self.table = {}
+        self.table = WeakValueDictionary()
         self.maxLen = maxLen
 
         self.dimBoard = dimensionBoard
@@ -107,7 +109,7 @@ class TranspositionTable:
                 self.nbOverwrites += 1
             else:
                 self.lenTable += 1
-            self.table[key] = (estimateScore, copy.deepcopy(bestMove), flag, shearchDepth, copy.deepcopy(previousBestMove))
+            self.table[key] = (estimateScore, copy.copy(bestMove), flag, shearchDepth, copy.copy(previousBestMove))
 
     def isInTable(self, state: GameStateAbalone) -> bool:
         key = self.getZobristHash(state)

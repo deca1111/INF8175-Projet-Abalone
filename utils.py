@@ -85,9 +85,9 @@ def getOrderScore(action: Action) -> float:
     adversary = nextState.get_next_player()
 
     # Calcul des différences de score engendré par l'action
-    # Soit 0 si aucune des billes du joueurs sont eliminé sinon 1
+    # 0 si aucune des billes du joueur n'est éliminée sinon 1
     playerDiffScore = abs(nextState.get_player_score(player) - currentState.get_player_score(player))
-    # Soit 0 si aucune des billes de l'adversaire sont eliminé sinon 1
+    # 0 si aucune des billes de l'adversaire n'est éliminée sinon 1
     adversaryDiffScore = abs(nextState.get_player_score(adversary) - currentState.get_player_score(adversary))
 
     # Initialisation
